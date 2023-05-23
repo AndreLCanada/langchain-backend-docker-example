@@ -1,9 +1,9 @@
-"""Create a ChatVectorDBChain for question/answering."""
-from langchain.callbacks.base import AsyncCallbackManager
+from langchain.callbacks.manager import AsyncCallbackManager
 from langchain.callbacks.tracers import LangChainTracer
-from langchain.chains import ChatVectorDBChain
+from langchain.chains import ConversationalRetrievalChain
 from langchain.chains.chat_vector_db.prompts import (CONDENSE_QUESTION_PROMPT,
                                                      QA_PROMPT)
+from langchain.chat_models import ChatOpenAI
 from langchain.chains.llm import LLMChain
 from langchain.chains.question_answering import load_qa_chain
 from langchain.llms import OpenAI
@@ -11,10 +11,10 @@ from langchain.vectorstores.base import VectorStore
 
 
 def get_chain(
-    vectorstore: VectorStore, question_handler, stream_handler, tracing: bool = False
-) -> ChatVectorDBChain:
-    """Create a ChatVectorDBChain for question/answering."""
-    # Construct a ChatVectorDBChain with a streaming llm for combine docs
+    vectorstore, question_handler, stream_handler, tracing: bool = False
+) -> ConversationalRetrievalChain:
+    """Create a ConversationalRetrievalChain for question/answering."""
+    # Construct a ConversationalRetrievalChain with a streaming llm for combine docs
     # and a separate, non-streaming llm for question generation
     manager = AsyncCallbackManager([])
     question_manager = AsyncCallbackManager([question_handler])
@@ -31,7 +31,7 @@ def get_chain(
         verbose=True,
         callback_manager=question_manager,
     )
-    streaming_llm = OpenAI(
+    streaming_llm = ChatOpenAI(
         streaming=True,
         callback_manager=stream_manager,
         verbose=True,
@@ -45,8 +45,8 @@ def get_chain(
         streaming_llm, chain_type="stuff", prompt=QA_PROMPT, callback_manager=manager
     )
 
-    qa = ChatVectorDBChain(
-        vectorstore=vectorstore,
+    qa = ConversationalRetrievalChain(
+        retriever=vectorstore.as_retriever(),
         combine_docs_chain=doc_chain,
         question_generator=question_generator,
         callback_manager=manager,

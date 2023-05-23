@@ -1,27 +1,26 @@
-"""Main entrypoint for the app."""
 import logging
+import os
 import pickle
 from pathlib import Path
 from typing import Optional
-
 from fastapi import FastAPI, Request, WebSocket, WebSocketDisconnect
 from fastapi.templating import Jinja2Templates
-from langchain.vectorstores import VectorStore
-
-from callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
-from query_data import get_chain
-from schemas import ChatResponse
+from src.callback import QuestionGenCallbackHandler, StreamingLLMCallbackHandler
+from src.query_data import get_chain
+from src.schemas import ChatResponse
+from src.ingest import ingest_docs
 
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
-vectorstore: Optional[VectorStore] = None
+vectorstore = None
 
 
 @app.on_event("startup")
 async def startup_event():
     logging.info("loading vectorstore")
     if not Path("vectorstore.pkl").exists():
-        raise ValueError("vectorstore.pkl does not exist, please run ingest.py first")
+        ingest_docs()
+       # raise ValueError("vectorstore.pkl does not exist, please run ingest.py first")
     with open("vectorstore.pkl", "rb") as f:
         global vectorstore
         vectorstore = pickle.load(f)
@@ -76,5 +75,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 if __name__ == "__main__":
     import uvicorn
+    
 
-    uvicorn.run(app, host="0.0.0.0", port=9000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
